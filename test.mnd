@@ -1,0 +1,47 @@
+// Factory unit management system
+// Finds an additive reconstructor and manages unit orders
+
+#set syntax = strict;
+
+require units;
+require blocks;
+
+param message = message1;
+
+const GRAPHITE_THRESHOLD = 40;
+const SILICON_THRESHOLD = 40;
+var UNIT_FLAG = 1 + rand(1000000);
+
+var factory;
+var unit;
+
+// The main code needs to be enclosed in a code block (begin ... end)
+begin
+   
+
+
+    // Find the additive reconstructor block
+    findLinkedBlocks("Locating factory block", message,
+        @additive-reconstructor, "Factory", out factory, true
+    );
+
+    while true do
+        // Check if factory has enough resources and no unit inside
+        if factory.@graphite >= GRAPHITE_THRESHOLD and
+           factory.@silicon >= SILICON_THRESHOLD and
+           factory.@unit == null then
+
+            // Find the nearest free level 1 unit
+            unit = findClosestUnit(factory.@x, factory.@y, @poly, UNIT_FLAG);
+
+            if unit != null then
+                ubind(unit);
+                // Order the unit to move into the factory
+                move(factory.@x, factory.@y);
+            end;
+        end;
+
+        wait(0.5);
+    end;
+
+end;

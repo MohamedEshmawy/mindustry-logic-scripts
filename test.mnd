@@ -12,8 +12,21 @@ const GRAPHITE_THRESHOLD = 40;
 const SILICON_THRESHOLD = 40;
 var UNIT_FLAG = 1 + rand(1000000);
 
+const LVL1_UNITS[] = (@mona, @flare, @dagger, @crawler, @nova);
+
 var factory;
 var unit;
+
+// Function to move unit to factory and enter as payload
+def moveUnitToFactory(factory_ref)
+    // Pathfind to factory until unit reaches it
+    do
+        pathfind(factory_ref.@x, factory_ref.@y);
+        wait(0.1);
+    while !within(factory_ref.@x, factory_ref.@y, 2);
+    // Enter the factory as payload
+    payEnter();
+end;
 
 // The main code needs to be enclosed in a code block (begin ... end)
 begin
@@ -26,19 +39,36 @@ begin
     );
 
     while true do
+
+        // Unbind any previously bound unit to ensure clean state
+        ubind(null);
+
         // Check if factory has enough resources and no unit inside
         if factory.@graphite >= GRAPHITE_THRESHOLD and
            factory.@silicon >= SILICON_THRESHOLD and
            factory.@unit == null then
 
-            // Find the nearest free level 1 unit
-            unit = findClosestUnit(factory.@x, factory.@y, @poly, UNIT_FLAG);
+            // Only search for a new unit if we don't already have one
+            if unit == null then
+                // Try to find the nearest free level 1 unit from available types
+                for var unit_type in LVL1_UNITS do
+                    unit = findClosestUnit(factory.@x, factory.@y, unit_type, UNIT_FLAG);
+                    if unit != null then
+                        break;
+                    end;
+                end;
+            end;
 
             if unit != null then
+                // Bind the unit
                 ubind(unit);
-                // Order the unit to move into the factory
-                move(factory.@x, factory.@y);
+                // Move unit to factory and enter as payload
+                moveUnitToFactory(factory);
             end;
+
+        else
+            // unit = null;
+            wait(1);
         end;
 
         wait(0.5);

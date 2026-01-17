@@ -56,17 +56,15 @@ def moveUnitToPayloadConveyor(conveyor_ref, factory_ref, sent_unit)
     printflush(message);
 
     // Find a free air point around the payload conveyor
-    var target_x, target_y;
-    findFreePointAroundConveyor(conveyor_ref, out target_x, out target_y);
 
-    print("Pathfinding to free point: ", target_x, ", ", target_y);
+    print("Pathfinding to conveyor...");
     printflush(message);
 
     // Pathfind to the free point around conveyor until unit reaches it
     do
         pathfind(conveyor_ref.@x, conveyor_ref.@y);
         wait(0.1);
-    while !within(conveyor_ref.@x, conveyor_ref.@y, 1);
+    while !within(conveyor_ref.@x, conveyor_ref.@y, 2);
 
     // Move to factory and enter as payload
     print("Unit reached conveyor area, moving to factory...");
@@ -75,7 +73,6 @@ def moveUnitToPayloadConveyor(conveyor_ref, factory_ref, sent_unit)
     do
         move(factory_ref.@x, factory_ref.@y);
         payEnter();
-        wait(0.1);
     while factory_ref.@payloadCount == 0;
 
     print("Unit entered factory successfully!");

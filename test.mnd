@@ -12,42 +12,88 @@ const GRAPHITE_THRESHOLD = 40;
 const SILICON_THRESHOLD = 40;
 var UNIT_FLAG = 1 + rand(1000000);
 
-const LVL1_UNITS[] = (@mona, @flare, @dagger, @crawler, @nova);
+const LVL1_UNITS[] = (@mono, @flare, @dagger, @crawler, @nova);
 
 var factory;
+var payload_conveyor;
 var unit;
 
 // Function to log messages to message block
-def log(text)
-    print(text);
+inline def log(args...)
+    for var arg in args do
+        print(arg);
+    end;
     printflush(message);
 end;
 
-// Function to move unit to factory and enter as payload
-def moveUnitToFactory(factory_ref)
-    log("Moving unit to factory...");
-    // Pathfind to factory until unit reaches it
+// Function to find a free air point around the payload conveyor
+def findFreePointAroundConveyor(conveyor_ref, out target_x, out target_y)
+    var radius = 1;
+    var max_radius = 5;
+    var angle = 0;
+
+    while radius <= max_radius do
+        for angle = 0 ; angle < 360 ; angle += 45 do
+            target_x = conveyor_ref.@x + radius * cos(angle);
+            target_y = conveyor_ref.@y + radius * sin(angle);
+
+            // Check if the point is air (not solid)
+            if getBlock(target_x, target_y) == @air then
+                return 1;
+            end;
+        end;
+        radius += 1;
+    end;
+
+    // Fallback to a point offset from conveyor
+    target_x = conveyor_ref.@x + 3;
+    target_y = conveyor_ref.@y;
+end;
+
+// Function to move unit to payload conveyor and enter as payload
+def moveUnitToPayloadConveyor(conveyor_ref, factory_ref, sent_unit)
+    print("Moving unit to payload conveyor...");
+    printflush(message);
+
+    // Find a free air point around the payload conveyor
+    var target_x, target_y;
+    findFreePointAroundConveyor(conveyor_ref, out target_x, out target_y);
+
+    print("Pathfinding to free point: ", target_x, ", ", target_y);
+    printflush(message);
+
+    // Pathfind to the free point around conveyor until unit reaches it
     do
-        pathfind(factory_ref.@x, factory_ref.@y);
+        pathfind(conveyor_ref.@x, conveyor_ref.@y);
         wait(0.1);
-    while !within(factory_ref.@x, factory_ref.@y, 2);
-    // Enter the factory as payload
-    log("Unit reached factory, entering as payload...");
-    payEnter();
-    log("Unit entered factory successfully!");
+    while !within(conveyor_ref.@x, conveyor_ref.@y, 1);
+
+    // Move to factory and enter as payload
+    print("Unit reached conveyor area, moving to factory...");
+    printflush(message);
+
+    do
+        move(factory_ref.@x, factory_ref.@y);
+        payEnter();
+        wait(0.1);
+    while factory_ref.@payloadCount == 0;
+
+    print("Unit entered factory successfully!");
+    printflush(message);
+    wait(1);
 end;
 
 // The main code needs to be enclosed in a code block (begin ... end)
 begin
-   
-
-
-    // Find the additive reconstructor block
-    log("Locating factory block...");
-    findLinkedBlocks("Locating factory block", message,
-        @additive-reconstructor, "Factory", out factory, true
+    // Find the additive reconstructor block and payload conveyor
+    print("Locating factory and payload conveyor blocks...");
+    printflush(message);
+    findLinkedBlocks("Locating blocks", message,
+        @additive-reconstructor, "Factory", out factory, true,
+        @payload-conveyor, "Payload Conveyor", out payload_conveyor, true
     );
-    log("Factory block found!");
+    print("Factory and payload conveyor blocks found!");
+    printflush(message);
 
     while true do
 
@@ -57,17 +103,20 @@ begin
         // Check if factory has enough resources and no unit inside
         if factory.@graphite >= GRAPHITE_THRESHOLD and
            factory.@silicon >= SILICON_THRESHOLD and
-           factory.@unit == null then
+           factory.@payloadCount == 0 then
 
-            log($"Factory ready! Graphite: ${factory.@graphite}, Silicon: ${factory.@silicon}");
+            print("Factory ready! Graphite: ", factory.@graphite, ", Silicon: ", factory.@silicon);
+            printflush(message);
 
             // Only search for a new unit if we don't already have one
-            if unit == null then
-                log("Searching for free level 1 unit...");
+            if unit == null or @unit.@dead == 1 then
+                print("Searching for free level 1 unit...");
+                printflush(message);
                 for var unit_type in LVL1_UNITS do
                     unit = findClosestUnit(factory.@x, factory.@y, unit_type, UNIT_FLAG);
                     if unit != null then
-                        log($"Found unit: ${unit}");
+                        print("Found unit: ", unit);
+                        printflush(message);
                         break;
                     end;
                 end;
@@ -75,14 +124,16 @@ begin
 
             if unit != null then
                 ubind(unit);
-                moveUnitToFactory(factory);
+                moveUnitToPayloadConveyor(payload_conveyor, factory, unit);
                 unit = null;
             else
-                log("No free unit found!");
+                print("No free unit found!");
+                printflush(message);
             end;
 
         else
-            log($"Waiting for resources... Graphite: ${factory.@graphite}, Silicon: ${factory.@silicon}");
+            print("Waiting for resources... Graphite: ", factory.@graphite, ", Silicon: ", factory.@silicon);
+            printflush(message);
             unit = null;
             wait(1);
         end;

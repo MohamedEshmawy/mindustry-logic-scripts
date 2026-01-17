@@ -115,8 +115,6 @@ begin
                 for var unit_type in LVL1_UNITS do
                     unit = findClosestUnit(factory.@x, factory.@y, unit_type, UNIT_FLAG);
                     if unit != null then
-                        print("Found unit: ", unit);
-                        printflush(message);
                         break;
                     end;
                 end;
@@ -135,10 +133,6 @@ begin
             print("Waiting for resources... Graphite: ", factory.@graphite, ", Silicon: ", factory.@silicon);
             printflush(message);
             unit = null;
-            wait(1);
         end;
-
-        wait(0.5);
     end;
-
 end;

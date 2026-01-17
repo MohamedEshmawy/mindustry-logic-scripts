@@ -17,15 +17,24 @@ const LVL1_UNITS[] = (@mona, @flare, @dagger, @crawler, @nova);
 var factory;
 var unit;
 
+// Function to log messages to message block
+def log(text)
+    print(text);
+    printflush(message);
+end;
+
 // Function to move unit to factory and enter as payload
 def moveUnitToFactory(factory_ref)
+    log("Moving unit to factory...");
     // Pathfind to factory until unit reaches it
     do
         pathfind(factory_ref.@x, factory_ref.@y);
         wait(0.1);
     while !within(factory_ref.@x, factory_ref.@y, 2);
     // Enter the factory as payload
+    log("Unit reached factory, entering as payload...");
     payEnter();
+    log("Unit entered factory successfully!");
 end;
 
 // The main code needs to be enclosed in a code block (begin ... end)
@@ -34,9 +43,11 @@ begin
 
 
     // Find the additive reconstructor block
+    log("Locating factory block...");
     findLinkedBlocks("Locating factory block", message,
         @additive-reconstructor, "Factory", out factory, true
     );
+    log("Factory block found!");
 
     while true do
 
@@ -48,26 +59,31 @@ begin
            factory.@silicon >= SILICON_THRESHOLD and
            factory.@unit == null then
 
+            log($"Factory ready! Graphite: ${factory.@graphite}, Silicon: ${factory.@silicon}");
+
             // Only search for a new unit if we don't already have one
             if unit == null then
-                // Try to find the nearest free level 1 unit from available types
+                log("Searching for free level 1 unit...");
                 for var unit_type in LVL1_UNITS do
                     unit = findClosestUnit(factory.@x, factory.@y, unit_type, UNIT_FLAG);
                     if unit != null then
+                        log($"Found unit: ${unit}");
                         break;
                     end;
                 end;
             end;
 
             if unit != null then
-                // Bind the unit
                 ubind(unit);
-                // Move unit to factory and enter as payload
                 moveUnitToFactory(factory);
+                unit = null;
+            else
+                log("No free unit found!");
             end;
 
         else
-            // unit = null;
+            log($"Waiting for resources... Graphite: ${factory.@graphite}, Silicon: ${factory.@silicon}");
+            unit = null;
             wait(1);
         end;
 
